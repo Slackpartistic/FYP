@@ -82,7 +82,7 @@ String _userName = '';
 
 
 Future<List<dynamic>> fetchFacultyData(String email) async {
-  final response = await http.get(Uri.parse('http://192.168.18.193:3001/fetchfacultydata?email=$email'));
+  final response = await http.get(Uri.parse('http://yourip:3001/fetchfacultydata?email=$email'));
   if (response.statusCode == 200) {
     return jsonDecode(response.body)['data'];
   } else {
@@ -225,7 +225,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<Map<String, dynamic>> fetchSession(String email) async {
-    final response = await http.get(Uri.parse('http://192.168.18.193:3001/getsession?email=$email'));
+    final response = await http.get(Uri.parse('http://yourip:3001/getsession?email=$email'));
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
       print (response.body);

@@ -7,7 +7,7 @@ import 'package:timezone/timezone.dart' as timezone;
 
 
 Future<List<dynamic>> fetchFacultyAttendanceHistory(String email) async {
-  final url = Uri.parse('http://192.168.18.193:3001/fetchfacultyattendancehistory?email=$email');
+  final url = Uri.parse('http://yourip:3001/fetchfacultyattendancehistory?email=$email');
   final response = await http.get(url);
 
   if (response.statusCode == 200) {

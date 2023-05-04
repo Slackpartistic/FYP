@@ -446,7 +446,7 @@ function sendAttendanceData(email, paperId, selectedStatus, Latitude, Longitude)
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: email, paperId: paperId, selectedStatus: selectedStatus,Latitude:Latitude,Longitude:Longitude })
   };
-  fetch('http://192.168.18.193:3001/postattendancemarkedbyfaculty', options)
+  fetch('http://yourip:3001/postattendancemarkedbyfaculty', options)
     .then(response => response.text())
     .then(data => console.log(data))
     .catch(error => console.error(error));
@@ -523,7 +523,7 @@ function sendPaperCollectionData(email, paperId, status) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: email, paperId: paperId, status: status })
   };
-  fetch('http://192.168.18.193:3001/postpapercollectionrecord', options)
+  fetch('http://yourip:3001/postpapercollectionrecord', options)
     .then(response => response.text())
     .then(data => console.log(data))
     .catch(error => console.error(error));

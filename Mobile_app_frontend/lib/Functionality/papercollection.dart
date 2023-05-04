@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 enum CollectionStatus { Collected, Not_Collected }
 
 Future<List<dynamic>> fetchPaperCollectionData(String email) async {
-  final url = Uri.parse('http://192.168.18.193:3001/getpapercollectionrecord?email=$email');
+  final url = Uri.parse('http://yourip:3001/getpapercollectionrecord?email=$email');
   final response = await http.get(url);
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(response.body);
@@ -58,7 +58,7 @@ class _PaperCollectionState extends State<PaperCollection> {
 
   Future<Map<String, dynamic>> fetchSession(String email) async {
     final response = await http.get(
-        Uri.parse('http://192.168.18.193:3001/getsession?email=$email'));
+        Uri.parse('http://yourip:3001/getsession?email=$email'));
     if (response.statusCode == 200) {
       final sessionData = jsonDecode(response.body)['session'];
       final currentTime = DateTime
@@ -78,7 +78,7 @@ class _PaperCollectionState extends State<PaperCollection> {
 
   Future<Map<String, dynamic>> getSession(String sessionData) async {
     final response = await http.get(Uri.parse(
-        'http://192.168.18.193:3001/getsession?session=$sessionData'));
+        'http://yourip:3001/getsession?session=$sessionData'));
     if (response.statusCode == 200) {
       final data = json.decode(response.body) as Map<String, dynamic>;
       return data;
@@ -89,7 +89,7 @@ class _PaperCollectionState extends State<PaperCollection> {
 
   void sendPaperCollectionData(String paperId, String selectedStatus) async {
     final response = await http.post(
-      Uri.parse('http://192.168.18.193:3001/postpapercollectionrecord'),
+      Uri.parse('http://yourip:3001/postpapercollectionrecord'),
       body: {
         'email': widget.email,
         'paperCollectionId': paperId,

@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 enum AttendanceStatus { P, A }
 
 Future<List<dynamic>> fetchMarkAttendanceData(String email) async {
-  final url = Uri.parse('http://192.168.18.193:3001/getfacultymarkattendance?email=$email');
+  final url = Uri.parse('http://yourip:3001/getfacultymarkattendance?email=$email');
   final response = await http.get(url);
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(response.body);
@@ -65,7 +65,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
   Future<Map<String, dynamic>> fetchSession(String email) async {
     final response = await http.get(
-        Uri.parse('http://192.168.18.193:3001/getsession?email=$email'));
+        Uri.parse('http://yourip:3001/getsession?email=$email'));
     if (response.statusCode == 200) {
       final sessionData = jsonDecode(response.body)['session'];
       final currentTime = DateTime
@@ -85,7 +85,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
   Future<Map<String, dynamic>> getSession(String sessionData) async {
     final response = await http.get(Uri.parse(
-        'http://192.168.18.193:3001/getsession?session=$sessionData'));
+        'http://yourip:3001/getsession?session=$sessionData'));
     if (response.statusCode == 200) {
       final data = json.decode(response.body) as Map<String, dynamic>;
       return data;
@@ -96,7 +96,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
   void sendAttendanceData(String paperId, String selectedStatus,double Latitude, double Longitude) async {
     final response = await http.post(
-      Uri.parse('http://192.168.18.193:3001/postfacultymarkattendance'),
+      Uri.parse('http://yourip:3001/postfacultymarkattendance'),
       body: {
         'email': widget.email,
         'paperCollectionId': paperId,

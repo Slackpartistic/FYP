@@ -113,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<String> loginUser(BuildContext context, String email, String password) async {
     //192.168.18.193:3001
     //10.97.22.58:3001 Uni ip
-    final url = Uri.parse('http://192.168.18.193:3001/facultylogin?email=${email}&password=${password}');
+    final url = Uri.parse('http://yourip:3001/facultylogin?email=${email}&password=${password}');
     final response = await http.get(url);
     final decodedResponse = json.decode(response.body);
     final data = decodedResponse['data'];

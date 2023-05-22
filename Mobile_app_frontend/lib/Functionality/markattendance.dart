@@ -5,25 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import'package:idms_fyp_app/Home.dart';
+import 'package:idms_fyp_app/login_page.dart';
 
 enum AttendanceStatus { P, A }
-
-Future<List<dynamic>> fetchMarkAttendanceData(String email) async {
-  final url = Uri.parse('http://yourip:3001/getfacultymarkattendance?email=$email');
-  final response = await http.get(url);
-  if (response.statusCode == 200) {
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.cast<Map<String, dynamic>>();
-  } else {
-    throw Exception('Failed to fetch data');
-  }
-}
 
 
 var paperId;
 double latitude=0.0;
 double longitude=0.0;
 class MarkAttendance extends StatefulWidget {
+  static const String routeName = '/markAttendance';
   final String email;
   MarkAttendance({required this.email});
 
@@ -34,9 +26,11 @@ class MarkAttendance extends StatefulWidget {
 
 
 class _MarkAttendanceState extends State<MarkAttendance> {
+
   List<Map<String, dynamic>> records = [];
   List<dynamic> sessions = [];
   AttendanceStatus? _attendanceStatus = AttendanceStatus.A;
+  bool _attendancesent=false;
   final TextEditingController absentTextController = TextEditingController();
 
 
@@ -48,55 +42,70 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   }
 
 
+  Future<Map<String, dynamic>> fetchSession(String email) async {
+    final response = await http.get(Uri.parse('http://your-ip:3001/getsession?email=$email'));
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      print(response.body);
+      final sessionData = List<int>.from(responseData['sessionData']);
+      print(sessionData);
+      final currentTime = DateTime.now().millisecondsSinceEpoch;
+      final session = sessionData.firstWhere(
+            (s) => s <= currentTime,
+        orElse: () => 0,
+      );
+      print('Returned session from fetchSession(): $session');
+      return {'currentSession': session};
+    } else {
+      throw Exception('Failed to fetch session data');
+    }
+  }
+
+
+  Future<List<int>> getSession(String sessionData) async {
+    final response = await http.get(Uri.parse(
+        'http://your-ip:3001/getsession?session=$sessionData'));
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body)['sessionData'] as List<dynamic>;
+      return data.cast<int>();
+    } else {
+      throw Exception('Failed to get session data');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchMarkAttendanceData(String email) async {
+    final url = Uri.parse('http://your-ip:3001/getfacultymarkattendance?email=$email');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      return data;
+    } else {
+      throw Exception('Failed to fetch data');
+    }
+  }
+
 
   Future<void> getMarkAttendanceData() async {
     try {
       final sessionData = await fetchSession(widget.email);
       final session = sessionData['currentSession'];
-      final data = await fetchMarkAttendanceData(widget.email);
+      final response = await fetchMarkAttendanceData(widget.email);
+      final List<dynamic> data = response['data'];
       setState(() {
-        records = data.cast<
-            Map<String, dynamic>>(); // update records list with fetched data
+        records = data.cast<Map<String, dynamic>>();
       });
     } catch (e) {
       print(e);
     }
   }
 
-  Future<Map<String, dynamic>> fetchSession(String email) async {
-    final response = await http.get(
-        Uri.parse('http://yourip:3001/getsession?email=$email'));
-    if (response.statusCode == 200) {
-      final sessionData = jsonDecode(response.body)['session'];
-      final currentTime = DateTime
-          .now()
-          .millisecondsSinceEpoch;
-      final session = sessionData != null ? sessionData.firstWhere(
-            (s) => s['startTime'] <= currentTime && s['endTime'] >= currentTime,
-        orElse: () => null,
-      ) : null;
-      final sessionName = session?['name'] ?? 'No session';
-      print(sessionName);
-      return {'sessionData': sessionData, 'currentSession': session};
-    } else {
-      throw Exception('Failed to fetch session data');
-    }
-  }
 
-  Future<Map<String, dynamic>> getSession(String sessionData) async {
-    final response = await http.get(Uri.parse(
-        'http://yourip:3001/getsession?session=$sessionData'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body) as Map<String, dynamic>;
-      return data;
-    } else {
-      throw Exception('Failed to get session data');
-    }
-  }
+
+
 
   void sendAttendanceData(String paperId, String selectedStatus,double Latitude, double Longitude) async {
     final response = await http.post(
-      Uri.parse('http://yourip:3001/postfacultymarkattendance'),
+      Uri.parse('http://your-ip:3001/postfacultymarkattendance'),
       body: {
         'email': widget.email,
         'paperCollectionId': paperId,
@@ -108,6 +117,9 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
     if (response.statusCode == 200) {
       print('Attendance data sent successfully');
+      setState(() {
+        _attendancesent=true;
+      });
     } else {
       print('Error sending attendance data');
     }
@@ -142,7 +154,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
           TextButton(
             child: Text('Go back'),
             onPressed: () {
-              Navigator.of(context).pop(); // close the dialog
+              Navigator.of(context).pop(); 
             },
           ),
         ],
@@ -229,22 +241,15 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                                   });
                                 },
                               ),
-                              // TextField(
-                              //   controller: absentTextController,
-                              //   maxLines: 3,
-                              //   decoration: InputDecoration.collapsed(
-                              //     border: OutlineInputBorder(),
-                              //     hintText: "Reason for absence.",
-                              //   ),
-                              // ),
+                           
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green[600]),
-                                onPressed: () async{
+                                onPressed: !_attendancesent ? () async{
                                   Position? currentPosition = await getCurrentposition();
                                   if (_attendanceStatus ==
                                       AttendanceStatus.P) {
-                                    // show a confirmation dialog before submitting attendance
+                                    
                                     showDialog(
                                       context: context,
                                       builder: (BuildContext context) =>
@@ -262,13 +267,19 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                                                 onPressed: () async{
 
                                                   if (currentPosition!=null){
-                                                  // send the attendance data with position
+                                                 
                                                     print(currentPosition.latitude);
                                                     print(currentPosition.longitude);
                                                   sendAttendanceData(
                                                       paperId, 'P',latitude,longitude);
-                                                  Navigator.of(context).pop(); // close the dialog
-                                                  // show a success message
+                                                  Navigator.of(context).pop();
+                                                    Navigator.pushNamedAndRemoveUntil(
+                                                      context,
+                                                      MyHomePage.routeName,
+                                                          (route) => route.settings.name == LoginPage.routeName,
+                                                      arguments: widget.email,
+                                                    );
+                                                    
                                                   ScaffoldMessenger.of(context)
                                                       .showSnackBar(
                                                     SnackBar(
@@ -280,8 +291,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                                                           seconds: 1),
                                                     ),
                                                   );
-                                                  //Navigator.pushReplacementNamed(context, '/home');
-                                                  //Navigator.popUntil(context, ModalRoute.withName('/home'));
                                                   }
                                                   else{
                                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -301,7 +310,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                                                       color: Colors.red),),
                                                 onPressed: () {
                                                   Navigator.of(context)
-                                                      .pop(); // close the dialog
+                                                      .pop(); 
                                                 },
                                               ),
                                             ],
@@ -309,7 +318,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                                     );
                                   } else if (_attendanceStatus ==
                                       AttendanceStatus.A) {
-                                    // show a confirmation dialog before submitting attendance
+                                   
                                     showDialog(
                                       context: context,
                                       builder: (BuildContext context) =>
@@ -322,11 +331,17 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                                                 child: Text('I understand',style: TextStyle(color: Colors.green[600]),),
                                                 onPressed: () async{
                                                   if (currentPosition!=null){
-                                                  // send the attendance data
+                                                  
                                                   sendAttendanceData(
                                                       paperId, 'A',latitude,longitude);
-                                                  Navigator.of(context).pop(); // close the dialog
-                                                  // show a success message
+                                                  Navigator.of(context).pop();
+                                                  Navigator.pushNamedAndRemoveUntil(
+                                                    context,
+                                                    MyHomePage.routeName,
+                                                        (route) => route.settings.name == LoginPage.routeName,
+                                                    arguments: widget.email,
+                                                  );
+                                                 
                                                   ScaffoldMessenger.of(context)
                                                       .showSnackBar(
                                                     SnackBar(
@@ -355,7 +370,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                                                 child: Text('Go back',style: TextStyle(color: Colors.red),),
                                                 onPressed: () {
                                                   Navigator.of(context)
-                                                      .pop(); // close the dialog
+                                                      .pop();
                                                 },
                                               ),
                                             ],
@@ -378,11 +393,12 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                                           ),
                                     );
                                   }
-                                },
-
+                                }
+                                : null,
                                 child: const Text(
                                   'Submit Attendance',
                                 ),
+
                               ),
                             ],
                           ),

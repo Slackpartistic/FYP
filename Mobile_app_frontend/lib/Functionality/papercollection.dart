@@ -4,24 +4,16 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:idms_fyp_app/Home.dart';
+import 'package:idms_fyp_app/login_page.dart';
 
 
 enum CollectionStatus { Collected, Not_Collected }
 
-Future<List<dynamic>> fetchPaperCollectionData(String email) async {
-  final url = Uri.parse('http://yourip:3001/getpapercollectionrecord?email=$email');
-  final response = await http.get(url);
-  if (response.statusCode == 200) {
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.cast<Map<String, dynamic>>();
-  } else {
-    throw Exception('Failed to fetch data');
-  }
-}
-
 var paperId;
 
 class PaperCollection extends StatefulWidget {
+  static const String routeName = '/paperCollection';
   final String email;
   PaperCollection({required this.email});
 
@@ -42,54 +34,68 @@ class _PaperCollectionState extends State<PaperCollection> {
     getPaperCollectiondata();
   }
 
+  Future<Map<String, dynamic>> fetchSession(String email) async {
+    final response = await http.get(Uri.parse('http://your-ip:3001/getsession?email=$email'));
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      print(response.body);
+      final sessionData = List<int>.from(responseData['sessionData']);
+      print(sessionData);
+      final currentTime = DateTime.now().millisecondsSinceEpoch;
+      final session = sessionData.firstWhere(
+            (s) => s <= currentTime,
+        orElse: () => 0,
+      );
+      print('Returned session from fetchSession(): $session');
+      return {'currentSession': session};
+    } else {
+      throw Exception('Failed to fetch session data');
+    }
+  }
+
+
+  Future<List<int>> getSession(String sessionData) async {
+    final response = await http.get(Uri.parse(
+        'http://your-ip:3001/getsession?session=$sessionData'));
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body)['sessionData'] as List<dynamic>;
+      return data.cast<int>();
+    } else {
+      throw Exception('Failed to get session data');
+    }
+  }
+
+
+  Future<Map<String,dynamic>> fetchPaperCollectionData(String email) async {
+    final url = Uri.parse('http://your-ip:3001/getpapercollectionrecord?email=$email');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      return data;
+    } else {
+      throw Exception('Failed to fetch data');
+    }
+  }
+
   Future<void> getPaperCollectiondata() async {
     try {
       final sessionData = await fetchSession(widget.email);
       final session=sessionData['currentSession'];
-      final data = await fetchPaperCollectionData(widget.email);
+      final response = await fetchPaperCollectionData(widget.email);
+      final List<dynamic> data = response['data'];
       setState(() {
-        records = data.cast<
-            Map<String, dynamic>>(); // update records list with fetched data
+        records = data.cast<Map<String, dynamic>>();
       });
     } catch (e) {
       print(e);
     }
   }
 
-  Future<Map<String, dynamic>> fetchSession(String email) async {
-    final response = await http.get(
-        Uri.parse('http://yourip:3001/getsession?email=$email'));
-    if (response.statusCode == 200) {
-      final sessionData = jsonDecode(response.body)['session'];
-      final currentTime = DateTime
-          .now()
-          .millisecondsSinceEpoch;
-      final session = sessionData != null ? sessionData.firstWhere(
-            (s) => s['startTime'] <= currentTime && s['endTime'] >= currentTime,
-        orElse: () => null,
-      ) : null;
-      final sessionName = session?['name'] ?? 'No session';
-      print(sessionName);
-      return {'sessionData': sessionData, 'currentSession': session};
-    } else {
-      throw Exception('Failed to fetch session data');
-    }
-  }
 
-  Future<Map<String, dynamic>> getSession(String sessionData) async {
-    final response = await http.get(Uri.parse(
-        'http://yourip:3001/getsession?session=$sessionData'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body) as Map<String, dynamic>;
-      return data;
-    } else {
-      throw Exception('Failed to get session data');
-    }
-  }
 
   void sendPaperCollectionData(String paperId, String selectedStatus) async {
     final response = await http.post(
-      Uri.parse('http://yourip:3001/postpapercollectionrecord'),
+      Uri.parse('http://your-ip:3001/postpapercollectionrecord'),
       body: {
         'email': widget.email,
         'paperCollectionId': paperId,
@@ -114,7 +120,7 @@ class _PaperCollectionState extends State<PaperCollection> {
           TextButton(
             child: Text('Go back'),
             onPressed: () {
-              Navigator.of(context).pop(); // close the dialog
+              Navigator.of(context).pop();
             },
           ),
         ],
@@ -145,15 +151,15 @@ class _PaperCollectionState extends State<PaperCollection> {
                     scrollDirection: Axis.vertical,
                     child: DataTable(
                       columns: [
-                        DataColumn(label: Text('Room')),
                         DataColumn(label: Text('Session')),
+                        DataColumn(label: Text('Room')),
                         DataColumn(label: Text('Collection Status')),
                       ],
                       rows: records.map((row) {
                         return DataRow(
                           cells: [
-                            DataCell(Text(row['Room'] ?? '')),
                             DataCell(Text(row['Session'].toString() ?? '')),
+                            DataCell(Text(row['Room'] ?? '')),
                             DataCell(Text(row['Status'] ?? '')),
                           ],
                         );
@@ -207,7 +213,7 @@ class _PaperCollectionState extends State<PaperCollection> {
                                 onPressed: () {
                                   if (_collectionStatus ==
                                       CollectionStatus.Collected) {
-                                    // show a confirmation dialog before submitting attendance
+                                   
                                     showDialog(
                                       context: context,
                                       builder: (BuildContext context) =>
@@ -223,10 +229,16 @@ class _PaperCollectionState extends State<PaperCollection> {
                                                   style: TextStyle(
                                                       color: Colors.green),),
                                                 onPressed: () {
-                                                  // send the attendance data
+                                                  
                                                   sendPaperCollectionData(paperId, 'Collected');
-                                                  Navigator.of(context).pop(); // close the dialog
-                                                  // show a success message
+                                                  Navigator.of(context).pop(); 
+                                                  Navigator.pushNamedAndRemoveUntil(
+                                                    context,
+                                                    MyHomePage.routeName,
+                                                        (route) => route.settings.name == LoginPage.routeName,
+                                                    arguments: widget.email,
+                                                  );
+                                                 
                                                   ScaffoldMessenger.of(context).showSnackBar(
                                                     SnackBar(
                                                       backgroundColor: Colors.green[600],
@@ -236,13 +248,14 @@ class _PaperCollectionState extends State<PaperCollection> {
                                                   );
                                                 },
                                               ),
+
                                               TextButton(
                                                 child: Text('Go back',
                                                   style: TextStyle(
                                                       color: Colors.red),),
                                                 onPressed: () {
                                                   Navigator.of(context)
-                                                      .pop(); // close the dialog
+                                                      .pop(); 
                                                 },
                                               ),
                                             ],
@@ -250,7 +263,7 @@ class _PaperCollectionState extends State<PaperCollection> {
                                     );
                                   } else if (_collectionStatus ==
                                       CollectionStatus.Not_Collected) {
-                                    // show a confirmation dialog before submitting attendance
+                                  
                                     showDialog(
                                       context: context,
                                       builder: (BuildContext context) =>
@@ -262,12 +275,18 @@ class _PaperCollectionState extends State<PaperCollection> {
                                               TextButton(
                                                 child: Text('I understand',style: TextStyle(color: Colors.green[600]),),
                                                 onPressed: () {
-                                                  // send the attendance data
+                                              
                                                   sendPaperCollectionData(
                                                       paperId, 'Not Collected');
                                                   Navigator.of(context)
-                                                      .pop(); // close the dialog
-                                                  // show a success message
+                                                      .pop();
+                                                  Navigator.pushNamedAndRemoveUntil(
+                                                    context,
+                                                    MyHomePage.routeName,
+                                                        (route) => route.settings.name == LoginPage.routeName,
+                                                    arguments: widget.email,
+                                                  );
+                                                
                                                   ScaffoldMessenger.of(context)
                                                       .showSnackBar(
                                                     SnackBar(
@@ -279,13 +298,14 @@ class _PaperCollectionState extends State<PaperCollection> {
                                                           seconds: 1),
                                                     ),
                                                   );
+                                                  Navigator.pop(context);
                                                 },
                                               ),
                                               TextButton(
                                                 child: Text('Go back',style: TextStyle(color: Colors.red),),
                                                 onPressed: () {
                                                   Navigator.of(context)
-                                                      .pop(); // close the dialog
+                                                      .pop();
                                                 },
                                               ),
                                             ],
